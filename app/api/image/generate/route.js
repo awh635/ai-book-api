@@ -2,7 +2,10 @@ import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function b64ToPngFile(b64) {
+  const bytes = Buffer.from(b64, "base64");
+  return new File([bytes], "prev.png", { type: "image/png" });
+}
 
 export async function POST(req) {
   try {
@@ -11,22 +14,42 @@ export async function POST(req) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { prompt, size = "1024x1024", quality = "low" } = await req.json();
-    if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return Response.json({ error: "OPENAI_API_KEY missing on server" }, { status: 500 });
+    }
 
-    const result = await client.images.generate({
+    const client = new OpenAI({ apiKey });
+
+    const {
+      prompt,
+      previousImageB64,
+      size = "1024x1024",
+      quality = "low",
+      input_fidelity = "high",
+      n = 1,
+    } = await req.json();
+
+    if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
+    if (!previousImageB64) return Response.json({ error: "Missing previousImageB64" }, { status: 400 });
+
+    const imageFile = b64ToPngFile(previousImageB64);
+
+    const result = await client.images.edit({
       model: "gpt-image-1",
+      image: imageFile,
       prompt,
       size,
       quality,
-      n: 1,
+      input_fidelity,
+      n,
     });
 
     const b64 = result?.data?.[0]?.b64_json;
-    if (!b64) return Response.json({ error: "No image returned" }, { status: 500 });
+    if (!b64) return Response.json({ error: "No edited image returned" }, { status: 500 });
 
     return Response.json({ b64, format: "png" });
-  } catch (e) {
-    return Response.json({ error: e?.message || "Server error" }, { status: 500 });
+  } catch (err) {
+    return Response.json({ error: err?.message || "Server error" }, { status: 500 });
   }
 }
