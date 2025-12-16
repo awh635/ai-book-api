@@ -19,10 +19,6 @@ export async function POST(req) {
       return Response.json({ error: "OPENAI_API_KEY missing on server" }, { status: 500 });
     }
 
-    import OpenAI from "openai";
-
-export const runtime = "nodejs";
-
 function getClient() {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null; // don't throw at import/build time
