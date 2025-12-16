@@ -6,7 +6,11 @@ function b64ToPngFile(b64) {
   const bytes = Buffer.from(b64, "base64");
   return new File([bytes], "prev.png", { type: "image/png" });
 }
-
+function getClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null; // don't throw at import/build time
+  return new OpenAI({ apiKey });
+}
 export async function POST(req) {
   try {
     const secret = req.headers.get("x-book-secret");
@@ -18,12 +22,6 @@ export async function POST(req) {
     if (!apiKey) {
       return Response.json({ error: "OPENAI_API_KEY missing on server" }, { status: 500 });
     }
-
-function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null; // don't throw at import/build time
-  return new OpenAI({ apiKey });
-}
 
     const {
       prompt,
