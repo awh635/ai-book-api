@@ -2,7 +2,12 @@ import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null; // don't throw at import/build time
+  return new OpenAI({ apiKey });
+}
+
 
 function b64ToPngFile(b64) {
   const bytes = Buffer.from(b64, "base64");
