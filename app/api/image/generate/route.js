@@ -2,56 +2,31 @@ import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
-function b64ToPngFile(b64) {
-  const bytes = Buffer.from(b64, "base64");
-  return new File([bytes], "prev.png", { type: "image/png" });
-}
-function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null; // don't throw at import/build time
-  return new OpenAI({ apiKey });
-}
 export async function POST(req) {
   try {
     const secret = req.headers.get("x-book-secret");
-    if (!secret || secret !== process.env.BOOK_API_SECRET) {
+    if (!process.env.BOOK_API_SECRET || secret !== process.env.BOOK_API_SECRET) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return Response.json({ error: "OPENAI_API_KEY missing on server" }, { status: 500 });
-    }
-
-    const {
-      prompt,
-      previousImageB64,
-      size = "1024x1024",
-      quality = "low",
-      input_fidelity = "high",
-      n = 1,
-    } = await req.json();
-
+    const { prompt, size = "1024x1024", quality = "low" } = await req.json();
     if (!prompt) return Response.json({ error: "Missing prompt" }, { status: 400 });
-    if (!previousImageB64) return Response.json({ error: "Missing previousImageB64" }, { status: 400 });
 
-    const imageFile = b64ToPngFile(previousImageB64);
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const result = await client.images.edit({
+    const result = await client.images.generate({
       model: "gpt-image-1",
-      image: imageFile,
       prompt,
       size,
       quality,
-      input_fidelity,
-      n,
+      n: 1,
     });
 
     const b64 = result?.data?.[0]?.b64_json;
-    if (!b64) return Response.json({ error: "No edited image returned" }, { status: 500 });
+    if (!b64) return Response.json({ error: "No image returned" }, { status: 500 });
 
     return Response.json({ b64, format: "png" });
-  } catch (err) {
-    return Response.json({ error: err?.message || "Server error" }, { status: 500 });
+  } catch (e) {
+    return Response.json({ error: e?.message || "Server error" }, { status: 500 });
   }
 }
