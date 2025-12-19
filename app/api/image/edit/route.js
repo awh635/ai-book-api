@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 
 export const runtime = "nodejs";
-
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 function b64ToPngFile(b64) {
   const bytes = Buffer.from(b64, "base64");
   return new File([bytes], "prev.png", { type: "image/png" });
